@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://unpkg.com/tailwindcss@^2/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/css/style.css">
+    <title>WebRTC</title>
+
+</head>
+
+<body>
+    <div class="webrtc mx-auto">
+        <div class="videoOutput w-full relative">
+            <h5 class="font-bold mt-5">WebRTC</h5>
+        </div>
+        <div class="makeCallBtn flex items-center mt-10">
+            <button type="button" class="outline-none focus-outline-none startCall">Call</button>
+            <button type="button" class="outline-none focus-outline-none">Hangup</button>
+        </div>
+        <div class="videoOutput flex items-center justify-center w-full">
+            <video autoplay playsinline controls="false" class="localVideo mt-3 mb-3" muted></video>
+            <video autoplay playsinline controls="false" class="remoteVideo mt-3 mb-3"></video>
+        </div>
+    </div>
+    <script src="/javascript/media.js"></script>
+</body>
+
+</html>

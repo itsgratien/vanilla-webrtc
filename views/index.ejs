@@ -8,24 +8,38 @@
     <link href="https://unpkg.com/tailwindcss@^2/dist/tailwind.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/css/style.css">
     <title>WebRTC</title>
-
+    <script src="/socket.io/socket.io.js" defer></script>
+    <script src="/javascript/media.js" defer></script>
 </head>
 
 <body>
+    <script>
+        const username = "<%= user.username%>" || null;
+    </script>
     <div class="webrtc mx-auto">
         <div class="videoOutput w-full relative">
             <h5 class="font-bold mt-5">WebRTC</h5>
         </div>
         <div class="makeCallBtn flex items-center mt-10">
-            <button type="button" class="outline-none focus-outline-none startCall">Call</button>
-            <button type="button" class="outline-none focus-outline-none">Hangup</button>
+            <%if(user.username==='janedoe' ){ %>
+                <button type="button" class="outline-none focus-outline-none startCall" data-username="johndoe">
+                    Call John doe</button>
+                <%}%>
+
+                    <%if(user.username==='johndoe' ){ %>
+                        <button type="button" class="outline-none focus-outline-none startCall" data-username="">
+                            Call Jane doe</button>
+                        <%}%>
+
+
+
+                            <button type="button" class="outline-none focus-outline-none">Hangup</button>
         </div>
         <div class="videoOutput flex items-center justify-center w-full">
             <video autoplay playsinline controls="false" class="localVideo mt-3 mb-3" muted></video>
-            <video autoplay playsinline controls="false" class="remoteVideo mt-3 mb-3"></video>
         </div>
     </div>
-    <script src="/javascript/media.js"></script>
+
 </body>
 
 </html>

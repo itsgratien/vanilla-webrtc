@@ -5,7 +5,7 @@ body {
   background: #f8f8f8;
 }
 .webrtc {
-  width: 1000px;
+  width: 800px;
   margin: auto;
 }
 .webrtc .videoOutput {

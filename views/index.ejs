@@ -15,28 +15,38 @@
 <body>
     <script>
         const username = "<%= user.username%>" || null;
+
+        const userId = "<%=user._id%>";
     </script>
     <div class="webrtc mx-auto">
         <div class="videoOutput w-full relative">
             <h5 class="font-bold mt-5">WebRTC</h5>
         </div>
+        <div class="mt-5">
+            <small>Your call id is <%=user._id%></small>
+        </div>
+        <button type="button" class="openWebcamButton">open webcam</button>
         <div class="makeCallBtn flex items-center mt-10">
+            <button type="button" class="outline-none focus-outline-none answerButton">
+                Answer call</button>
             <%if(user.username==='janedoe' ){ %>
-                <button type="button" class="outline-none focus-outline-none startCall" data-username="johndoe">
+                <button type="button" class="outline-none focus-outline-none callButton" data-userid="<%=user._id%>">
                     Call John doe</button>
                 <%}%>
 
                     <%if(user.username==='johndoe' ){ %>
-                        <button type="button" class="outline-none focus-outline-none startCall" data-username="">
+                        <button type="button" class="outline-none focus-outline-none callButton"
+                            data-userid="<%=user._id%>">
                             Call Jane doe</button>
                         <%}%>
 
 
 
-                            <button type="button" class="outline-none focus-outline-none">Hangup</button>
+                            <button type="button" class="outline-none focus-outline-none hangupButton">Hangup</button>
         </div>
-        <div class="videoOutput flex items-center justify-center w-full">
+        <div class="videoOutput w-full grid grid-cols-2 gap-4">
             <video autoplay playsinline controls="false" class="localVideo mt-3 mb-3" muted></video>
+            <video autoplay playsinline controls="false" class="remoteVideo mt-3 mb-3"></video>
         </div>
     </div>
 

@@ -1,136 +1,150 @@
 const socket = io('/');
 
-const constraints = { video: true, audio: true };
+const server = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
 
+let pc = new RTCPeerConnection(server);
+
+let localStream = null;
+
+let remoteStream = null;
+
+//documents
 const localVideo = document.querySelector('.localVideo');
 
-const callBtn = document.querySelector('.startCall');
+const remoteVideo = document.querySelector('.remoteVideo');
 
-let pc1;
+const callButton = document.querySelector('.callButton');
 
-let pc2;
+const hangupButton = document.querySelector('.hangupButton');
 
-let localStream;
+const answerButton = document.querySelector('.answerButton');
 
-const configuration = {};
+const openWebCamButton = document.querySelector('.openWebcamButton');
 
-const openMediaDevices = async (constraintValues) => {
-  return await navigator.mediaDevices.getUserMedia(constraintValues);
-};
+answerButton.style.display = 'none';
 
-const getConnectedDevices = async (type) => {
-  const devices = await navigator.mediaDevices.enumerateDevices();
+//notify user
+socket.on('notify-call', (value) => {
+  alert(`Someone is calling you with ID of: ${value.callId}`);
 
-  return devices.filter((item) => item.kind === type);
-};
+  callButton.style.display = 'none';
 
-const triggerMediaDeviceStream = async () => {
-  try {
-    const s = await openMediaDevices(constraints);
+  answerButton.style.display = 'block';
 
-    localVideo.srcObject = s;
+  answerButton.setAttribute('callId', value.callId);
 
-    localStream = s;
+  answerButton.setAttribute('offerId', value.offerId);
+});
 
-    return localStream;
-  } catch (error) {
-    console.log('error', error);
-  }
-};
+// setup media devices
+openWebCamButton.onclick = async () => {
+  localStream = await navigator.mediaDevices.getUserMedia({
+    audio: true,
+    video: true,
+  });
 
-const makeCall = async () => {
-  try {
-    const callingUser = callBtn.getAttribute('data-username');
+  remoteStream = new MediaStream();
 
-    pc1 = new RTCPeerConnection(configuration);
+  // add track from local stream to peerConnection
+  localStream.getTracks().forEach((track) => {
+    pc.addTrack(track, localStream);
+  });
 
-    const offer = await pc1.createOffer({
-      offerToReceiveAudio: true,
-      offerToReceiveVideo: true,
+  //pull track from remote stream and add to video stream
+  pc.ontrack = (event) => {
+    event.streams[0].getTracks().forEach((track) => {
+      remoteStream.addTrack(track, remoteStream);
     });
+  };
 
-    await pc1.setLocalDescription(offer);
+  localVideo.srcObject = localStream;
 
-    socket.emit('make-call', { offer, username: callingUser });
+  remoteVideo.srcObject = remoteStream;
+};
 
-    socket.on('receive-answer', async (answer) => {
-      if (answer) {
-        const remoteDesc = new RTCSessionDescription(answer);
+// create offer
+callButton.onclick = async () => {
+  const offerDescription = await pc.createOffer();
 
-        await pc1.setRemoteDescription(remoteDesc);
+  await pc.setLocalDescription(offerDescription);
+
+  const offer = {
+    sdp: offerDescription.sdp,
+    type: offerDescription.type,
+    userId,
+  };
+  // create offer by sending create-offer event
+  socket.emit('create-offer', offer);
+
+  //listen to remote answer
+  socket.on('get-remote-answer', (value) => {
+    if (!pc.currentRemoteDescription && value) {
+      const answerDescription = new RTCSessionDescription(value.answer);
+
+      pc.setRemoteDescription(answerDescription);
+    }
+  });
+
+  // listen to remote ice candidate and turn them to local peer connection
+  socket.on('get-icecandidate', async (value) => {
+    // const candidate = new RTCIceCandidate(value.candidate);
+    try {
+      if (!pc || !pc.remoteDescription.type) {
+        await pc.addIceCandidate(value.candidate);
       }
-    });
+    } catch (error) {
+      console.log('error', error);
+    }
+  });
+};
 
-    //listen to local ice candidate
-    pc1.addEventListener('icecandidate', (event) => {
-      socket.emit('ice', { candidate: event.candidate, username });
-    });
+// answer call with unique id of user who is calling you
+answerButton.onclick = async () => {
+  const callId = answerButton.getAttribute('callId');
 
-    //listen to remote ice candidate
-    socket.on('receive-ice', async (data) => {
-      await pc1.addIceCandidate(data);
-    });
+  const offerId = answerButton.getAttribute('offerId');
 
-    pc1.addEventListener('connectionstatechange', (event) => {
-      if (pc1.connectionState === 'connected') {
-        console.log('connected pc1');
-      }
-    });
+  const callOfferRes = await (
+    await fetch(`/offer/${callId}/${offerId}`)
+  ).json();
 
-    if (localStream) {
-      localStream.getTracks().forEach((v) => {
-        pc1.addTrack(v, localStream);
+  const offerDescription = await callOfferRes.data;
+
+  await pc.setRemoteDescription(new RTCSessionDescription(offerDescription));
+
+  const answerDescription = await pc.createAnswer();
+
+  await pc.setLocalDescription(answerDescription);
+
+  socket.emit('add-answer', { userId: callId, answer: answerDescription });
+
+  //listen
+  pc.onicecandidate = (event) => {
+    if (event.candidate) {
+      socket.emit('add-icecandidate', {
+        userId: callId,
+        candidate: event.candidate,
       });
     }
+  };
 
-    const remoteStream = new MediaStream();
+  // const answer = {
+  //   type: answerDescription.type,
+  //   sdp: answerDescription.sdp,
+  // };
 
-    const remoteVideo = document.createElement('video');
+  // socket.on(`added-answer-${callId}`, async (response) => {
+  //   const url = `/answer/${callId}/${response._id}`;
 
-    remoteVideo.autoplay = true;
-
-    remoteVideo.srcObject = remoteStream;
-
-    pc1.addEventListener('track', async (event) => {
-      remoteStream.addTrack(event.track, remoteStream);
-    });
-
-    const videoOutput = document.querySelector('.videoOutput');
-
-    videoOutput.appendChild(remoteVideo);
-  } catch (error) {}
+  //   // //update answer
+  //   await (
+  //     await fetch(url, {
+  //       method: 'PUT',
+  //       headers: { 'Content-type': 'application/json; charset=UTF-8' },
+  //       body: JSON.stringify({
+  //         answer,
+  //       }),
+  //     })
+  //   ).json();
+  // });
 };
-
-const receiveCall = async (value) => {
-  pc2 = new RTCPeerConnection(configuration);
-
-  pc2.setRemoteDescription(new RTCSessionDescription(value.offer));
-
-  const answer = await pc2.createAnswer();
-
-  await pc2.setLocalDescription(answer);
-
-  socket.emit('answer', answer);
-
-  //listen to local ice candidate
-  pc2.addEventListener('icecandidate', (event) => {
-    socket.emit('ice', { candidate: event.candidate, username });
-  });
-
-  //listen to remote ice candidate
-  socket.on('receive-ice', async (data) => {
-    await pc2.addIceCandidate(data);
-  });
-
-  pc2.addEventListener('connectionstatechange', (event) => {
-    if (pc2.connectionState === 'connected') {
-      console.log('connected pc2');
-    }
-  });
-};
-
-window.addEventListener('load', triggerMediaDeviceStream);
-
-callBtn.addEventListener('click', makeCall);
-
-socket.on('incoming-call', receiveCall);

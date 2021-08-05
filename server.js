@@ -1,6 +1,8 @@
 const express = require('express');
 
-const user = require('./user');
+const { connect, createUsers } = require('./database/connect');
+
+const { userModel, offerModel, answerModel } = require('./database/models');
 
 const app = express();
 
@@ -12,35 +14,63 @@ app.set('view engine', 'ejs');
 
 app.use(express.static('./public'));
 
-app.get('/', (req, res) => {
+app.use(express.json());
+
+app.use(express.urlencoded({ extended: true }));
+
+app.get('/', async (req, res) => {
   const { username } = req.query;
 
-  const find = user.find((item) => item.username === username);
+  const find = await userModel.findOne({ username });
 
   res.render('index', { user: find });
 });
 
-io.on('connection', (socket) => {
-  socket.on('make-call', (value) => {
-    const find = user.find((item) => item.username !== value.username);
+app.get('/offer/:userId/:offerId', async (req, res) => {
+  const get = await offerModel.findOne({
+    $and: [{ userId: req.params.userId }, { _id: req.params.offerId }],
+  });
 
-    socket.broadcast.emit('incoming-call', {
-      username: find.username,
-      offer: value.offer,
+  return res.json({ data: get });
+});
+
+app.put(`/answer/:userId/:answerId`, async (req, res) => {
+  const u = await answerModel.findOneAndUpdate(
+    { $and: [{ _id: req.params.answerId }, { userId: req.params.userId }] },
+    { $set: { answer: req.body.answer } },
+    { new: true }
+  );
+
+  return res.json({ data: u });
+});
+
+io.on('connection', (socket) => {
+  socket.on('create-offer', async (values) => {
+    const c = await offerModel.create(values);
+
+    socket.broadcast.emit('notify-call', {
+      callId: values.userId,
+      offerId: c._id,
     });
   });
 
-  socket.on('answer', (value) => {
-    socket.broadcast.emit('receive-answer', value);
+  socket.on('add-answer', async (values) => {
+    const add = await answerModel.create(values);
+
+    socket.broadcast.emit('get-remote-answer', add);
   });
 
-  socket.on('ice', (value) => {
-    const { username, candidate } = value;
-
-    socket.broadcast.emit('receive-ice', candidate);
+  socket.on('add-icecandidate', (values) => {
+    socket.emit('get-icecandidate', values);
   });
 });
 
 const port = 3000;
 
-server.listen(port, () => console.log(`server is listening on port ${port}`));
+server.listen(port, async () => {
+  await connect();
+
+  await createUsers();
+
+  console.log(`server is listening on port ${port}`);
+});

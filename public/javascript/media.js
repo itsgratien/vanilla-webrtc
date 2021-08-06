@@ -69,8 +69,7 @@ callButton.onclick = async () => {
   await pc.setLocalDescription(offerDescription);
 
   const offer = {
-    sdp: offerDescription.sdp,
-    type: offerDescription.type,
+    offer: offerDescription,
     userId,
   };
   // create offer by sending create-offer event
@@ -87,14 +86,10 @@ callButton.onclick = async () => {
 
   // listen to remote ice candidate and turn them to local peer connection
   socket.on('get-icecandidate', async (value) => {
-    // const candidate = new RTCIceCandidate(value.candidate);
-    try {
-      if (!pc || !pc.remoteDescription.type) {
-        await pc.addIceCandidate(value.candidate);
-      }
-    } catch (error) {
-      console.log('error', error);
-    }
+    console.log('value', value);
+    const candidate = new RTCIceCandidate(value.candidate);
+
+    await pc.addIceCandidate(candidate);
   });
 };
 
@@ -110,7 +105,9 @@ answerButton.onclick = async () => {
 
   const offerDescription = await callOfferRes.data;
 
-  await pc.setRemoteDescription(new RTCSessionDescription(offerDescription));
+  await pc.setRemoteDescription(
+    new RTCSessionDescription(offerDescription.offer)
+  );
 
   const answerDescription = await pc.createAnswer();
 
@@ -127,24 +124,4 @@ answerButton.onclick = async () => {
       });
     }
   };
-
-  // const answer = {
-  //   type: answerDescription.type,
-  //   sdp: answerDescription.sdp,
-  // };
-
-  // socket.on(`added-answer-${callId}`, async (response) => {
-  //   const url = `/answer/${callId}/${response._id}`;
-
-  //   // //update answer
-  //   await (
-  //     await fetch(url, {
-  //       method: 'PUT',
-  //       headers: { 'Content-type': 'application/json; charset=UTF-8' },
-  //       body: JSON.stringify({
-  //         answer,
-  //       }),
-  //     })
-  //   ).json();
-  // });
 };

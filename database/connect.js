@@ -1,13 +1,13 @@
 const mongoose = require('mongoose');
 
-const { userModel } = require('./models');
+const { userModel, offerModel, answerModel } = require('./models');
 
 const connect = async () => {
   try {
     await mongoose.connect('mongodb://localhost:27017/webrtc', {
       useFindAndModify: false,
       useNewUrlParser: true,
-      useUnifiedTopology: true
+      useUnifiedTopology: true,
     });
   } catch (error) {
     throw error;
@@ -36,7 +36,20 @@ const createUsers = async () => {
   }
 };
 
+const dropTables = async () => {
+  try {
+    await answerModel.deleteMany({});
+
+    await offerModel.deleteMany({});
+
+    return;
+  } catch (error) {
+    throw error;
+  }
+};
+
 module.exports = {
   connect,
   createUsers,
+  dropTables,
 };

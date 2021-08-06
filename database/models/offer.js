@@ -2,12 +2,8 @@ const mongoose = require('mongoose');
 
 const offerSchema = new mongoose.Schema(
   {
-    type: {
-      type: String,
-      required: true,
-    },
-    sdp: {
-      type: String,
+    offer: {
+      type: Object,
       required: true,
     },
     userId: {

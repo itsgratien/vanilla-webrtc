@@ -1,6 +1,6 @@
 const express = require('express');
 
-const { connect, createUsers } = require('./database/connect');
+const { connect, createUsers, dropTables } = require('./database/connect');
 
 const { userModel, offerModel, answerModel } = require('./database/models');
 
@@ -57,7 +57,7 @@ io.on('connection', (socket) => {
   socket.on('add-answer', async (values) => {
     const add = await answerModel.create(values);
 
-    socket.broadcast.emit('get-remote-answer', add);
+    socket.emit('get-remote-answer', add);
   });
 
   socket.on('add-icecandidate', (values) => {
@@ -71,6 +71,8 @@ server.listen(port, async () => {
   await connect();
 
   await createUsers();
+
+  await dropTables();
 
   console.log(`server is listening on port ${port}`);
 });

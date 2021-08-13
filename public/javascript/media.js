@@ -55,12 +55,31 @@ callButton.onclick = async () => {
         const remoteStream = mediaStream;
 
         pc.addEventListener('track', async (event) => {
-          remoteStream.addTrack(event.track, remoteStream);
+          event.streams[0].getTracks().forEach((t) => {
+            remoteStream.addTrack(t, remoteStream);
+          });
         });
 
         const remoteDesc = new RTCSessionDescription(res.answer);
 
         await pc.setRemoteDescription(remoteDesc);
+      }
+    });
+    pc.addEventListener('icecandidate', (event) => {
+      if (event.candidate) {
+        socket.emit('create-icecandidate', { icecandidate: event.candidate });
+      }
+    });
+
+    socket.on('receive-icecandidate', async (res) => {
+      try {
+        if (res.icecandidate) {
+          if (!pc || pc.remoteDescription) {
+            await pc.addIceCandidate(res.icecandidate);
+          }
+        }
+      } catch (error) {
+        console.log('failed to add ice candidate', error);
       }
     });
   } catch (error) {
@@ -102,29 +121,40 @@ answerButton.onclick = async () => {
         pc.addTrack(track, localStream);
       });
 
+      const mediaStream = new MediaStream();
+
+      remoteVideo.srcObject = mediaStream;
+
+      const remoteStream = mediaStream;
+
+      pc.addEventListener('track', async (event) => {
+        event.streams[0].getTracks().forEach((t) => {
+          remoteStream.addTrack(t, remoteStream);
+        });
+      });
+
       const callId = answerButton.getAttribute('callId');
 
       socket.emit('create-answer', { answer, callId, userId });
     }
+    pc.addEventListener('icecandidate', (event) => {
+      if (event.candidate) {
+        socket.emit('create-icecandidate', { icecandidate: event.candidate });
+      }
+    });
+
+    socket.on('receive-icecandidate', async (res) => {
+      try {
+        if (res.icecandidate) {
+          if (!pc || pc.remoteDescription) {
+            await pc.addIceCandidate(res.icecandidate);
+          }
+        }
+      } catch (error) {
+        console.log('failed to add ice candidate', error);
+      }
+    });
   } catch (error) {
     console.log('answer error', error);
   }
 };
-
-pc.addEventListener('icecandidate', (event) => {
-  if (event.candidate) {
-    socket.emit('create-icecandidate', { icecandidate: event.candidate });
-  }
-});
-
-socket.on('receive-icecandidate', async (res) => {
-  try {
-    if (res.icecandidate) {
-      if (!pc || pc.remoteDescription) {
-        await pc.addIceCandidate(res.icecandidate);
-      }
-    }
-  } catch (error) {
-    console.log('failed to add ice candidate', error);
-  }
-});

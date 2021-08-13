@@ -46,22 +46,38 @@ app.put(`/answer/:userId/:answerId`, async (req, res) => {
 
 io.on('connection', (socket) => {
   socket.on('create-offer', async (values) => {
-    const c = await offerModel.create(values);
+    try {
+      const c = await offerModel.create({ ...values, userId: values.callId });
 
-    socket.broadcast.emit('notify-call', {
-      callId: values.userId,
-      offerId: c._id,
-    });
+      socket.broadcast.emit('receive-offer', {
+        callId: c.userId,
+        offer: c.offer,
+      });
+    } catch (error) {
+      console.log('createOfferError', error);
+    }
   });
 
-  socket.on('add-answer', async (values) => {
-    const add = await answerModel.create(values);
+  socket.on('create-answer', async (value) => {
+    try {
+      const c = await answerModel.create(value);
 
-    socket.emit('get-remote-answer', add);
+      socket.broadcast.emit('receive-answer', {
+        answer: c.answer,
+        callId: c.callId,
+        userId: c.userId,
+      });
+    } catch (error) {
+      console.log('createAnswerError', error);
+    }
   });
 
-  socket.on('add-icecandidate', (values) => {
-    socket.emit('get-icecandidate', values);
+  socket.on('create-icecandidate', async (value) => {
+    try {
+      socket.emit('receive-icecandidate', value);
+    } catch (error) {
+      console.log('createIceCandidateError', error);
+    }
   });
 });
 

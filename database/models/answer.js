@@ -10,6 +10,10 @@ const answerSchema = new mongoose.Schema(
       type: mongoose.Types.ObjectId,
       required: true,
     },
+    callId: {
+      type: mongoose.Types.ObjectId,
+      required: true,
+    },
   },
   { timestamps: true }
 );
